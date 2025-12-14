@@ -1,1 +1,5 @@
-// app global css in SCSS form
+#login-container,
+.login-container {
+  width: 100%;
+  max-width: 380px; // idealan desktop/mobile kompromis
+} // app global css in SCSS form

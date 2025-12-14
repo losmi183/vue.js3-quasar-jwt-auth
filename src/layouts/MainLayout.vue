@@ -1,23 +1,30 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
+  <q-layout>
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+        <q-btn flat dense round icon="menu" @click="toggleDrawer"></q-btn>
 
-        <q-toolbar-title> Quasar App </q-toolbar-title>
+        <q-toolbar-title>Username placeholder</q-toolbar-title>
 
-        <div>Quasar v{{ $q.version }}</div>
+        <q-btn round flat icon="brightness_6" @click="$q.dark.toggle()"></q-btn>
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <q-drawer v-model="drawer" show-if-above bordered>
       <q-list>
-        <q-item-label header> Essential Links </q-item-label>
-
-        <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
+        <q-item active clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="star"></q-icon>
+          </q-item-section>
+          <q-item-section>star</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="send"></q-icon>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
-
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -25,57 +32,39 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import EssentialLink from 'components/EssentialLink.vue'
+import { ref, onMounted, watch } from 'vue'
+import { useAuthStore } from 'src/stores/auth'
 
-const linksList = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev',
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
-  },
-]
+const auth = useAuthStore()
+const drawer = ref(null)
+const user = ref(null)
 
-const leftDrawerOpen = ref(false)
-
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value
+function toggleDrawer() {
+  drawer.value = !drawer.value
 }
+
+// --- DARK MODE ---
+import { Dark } from 'quasar'
+
+// 1️⃣ Proveri localStorage prilikom mount-a
+onMounted(async () => {
+  // Dark theme
+  const savedTheme = localStorage.getItem('dark-mode')
+  if (savedTheme !== null) {
+    Dark.set(savedTheme === 'true')
+  }
+  // Auth user check
+  const user = auth.getUser
+  if (!auth.getUser()) {
+    await auth.refresh()
+    await auth.whoami()
+  }
+})
+
+watch(
+  () => Dark.isActive,
+  (val) => {
+    localStorage.setItem('dark-mode', val)
+  },
+)
 </script>
