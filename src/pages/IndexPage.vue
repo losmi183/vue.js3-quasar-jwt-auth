@@ -1,7 +1,5 @@
 <template>
   <q-page class="flex flex-center">
-    <q-btn @click="toggleAuth">toggle</q-btn>
-    <q-btn @click="whoami">whoami</q-btn>
     <!-- Za neulogovane korisnike -->
     <div v-if="!isAuth">
       <div class="text-h4 text-primary q-mb-md">Crypted Talk Web Application</div>
@@ -99,18 +97,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 
 const auth = useAuthStore()
 
-const isAuth = ref(false)
-
-function toggleAuth() {
-  isAuth.value = !isAuth.value
-}
-
-function whoami() {
-  auth.whoami()
-}
+const isAuth = computed(() => auth.isAuthenticated)
 </script>

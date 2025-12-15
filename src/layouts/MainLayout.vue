@@ -4,9 +4,44 @@
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="toggleDrawer"></q-btn>
 
-        <q-toolbar-title>Username placeholder</q-toolbar-title>
+        <q-toolbar-title>Crypt Talk</q-toolbar-title>
 
-        <q-btn round flat icon="brightness_6" @click="$q.dark.toggle()"></q-btn>
+        <q-btn flat round dense class="q-ml-md" @click="menu = !menu">
+          <q-avatar size="32px" class="q-mr-sm">
+            <img src="https://i.pravatar.cc/150?img=3" alt="Avatar" />
+          </q-avatar>
+          <span>John Doe</span>
+          <q-icon name="arrow_drop_down" class="q-ml-xs" />
+        </q-btn>
+
+        <q-menu v-model="menu" anchor="bottom right" self="top right">
+          <q-list padding>
+            <!-- Profile -->
+            <q-item clickable v-ripple>
+              <q-item-section>Settings</q-item-section>
+            </q-item>
+
+            <q-separator></q-separator>
+
+            <!-- Theme Switch -->
+            <q-item clickable v-ripple>
+              <q-item-section>
+                <div class="row items-center justify-between">
+                  <span>Theme</span>
+                  <q-toggle v-model="darkMode" @update:model-value="toggleDark" label="Dark Mode" />
+                  <!-- <q-btn round flat icon="brightness_6" @click="$q.dark.toggle()"></q-btn> -->
+                </div>
+              </q-item-section>
+            </q-item>
+
+            <q-separator />
+
+            <!-- Logout -->
+            <q-item clickable v-ripple>
+              <q-item-section @click="logout" class="text-negative">Logout</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
       </q-toolbar>
     </q-header>
 
@@ -34,13 +69,25 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
+import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
+const router = useRouter()
 const drawer = ref(null)
 const user = ref(null)
+const darkMode = ref(false)
 
 function toggleDrawer() {
   drawer.value = !drawer.value
+}
+function toggleDark(val) {
+  Dark.set(val)
+  localStorage.setItem('dark-mode', val)
+}
+
+function logout() {
+  auth.logout()
+  router.push('/')
 }
 
 // --- DARK MODE ---
@@ -56,8 +103,9 @@ onMounted(async () => {
   // Auth user check
   const user = auth.getUser
   if (!auth.getUser()) {
-    await auth.refresh()
-    await auth.whoami()
+    if (await auth.refresh()) {
+      await auth.whoami()
+    }
   }
 })
 

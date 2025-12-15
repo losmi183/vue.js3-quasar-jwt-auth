@@ -28,8 +28,9 @@ export const useAuthStore = defineStore('auth', () => {
     if (!refreshToken.value) {
       refreshToken.value = localStorage.getItem('refreshToken')
     }
-
-    if (!refreshToken.value) throw new Error('No refresh token available')
+    if (!refreshToken.value) {
+      return null
+    }
 
     const res = await api.post('/auth/refresh', { refresh_token: refreshToken.value })
     token.value = res.data.token
@@ -44,6 +45,21 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('refreshToken')
     token.value = null
     refreshToken.value = null
+  }
+
+  function register(name, email, password) {
+    api.post('/auth/register', { name, email, password })
+  }
+
+  async function forgotPassword(email) {
+    api.post('/auth/forgot-password', { email })
+  }
+
+  async function resetPassword(password, forgotPasswordToken) {
+    return api.post('/auth/reset-password', {
+      password: password,
+      forgot_password_token: forgotPasswordToken,
+    })
   }
 
   async function whoami() {
@@ -62,5 +78,8 @@ export const useAuthStore = defineStore('auth', () => {
     whoami,
     refresh,
     logout,
+    register,
+    forgotPassword,
+    resetPassword,
   }
 })
