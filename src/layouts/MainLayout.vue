@@ -1,7 +1,7 @@
 <template>
   <q-layout>
     <q-header elevated>
-      <q-toolbar>
+      <q-toolbar v-if="isAuth">
         <q-btn flat dense round icon="menu" @click="toggleDrawer"></q-btn>
 
         <q-toolbar-title>Crypt Talk</q-toolbar-title>
@@ -43,9 +43,36 @@
           </q-list>
         </q-menu>
       </q-toolbar>
+      <q-toolbar v-else>
+        <!-- sve guramo desno -->
+        <q-space />
+
+        <!-- Theme toggle -->
+        <div class="row items-center q-mr-md">
+          <span class="q-mr-sm">Theme</span>
+          <q-toggle
+            v-model="darkMode"
+            @update:model-value="toggleDark"
+            dense
+            :color="darkMode ? 'blue-5' : 'blue-5'"
+            track-color="grey-3"
+            thumb-color="white"
+          />
+        </div>
+
+        <!-- Login -->
+        <q-btn round flat dense icon="login" color="grey-3" to="/login">
+          <q-tooltip>Login</q-tooltip>
+        </q-btn>
+
+        <!-- Register -->
+        <q-btn round flat dense icon="person_add" color="grey-3" to="/register">
+          <q-tooltip>Register</q-tooltip>
+        </q-btn>
+      </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="drawer" show-if-above bordered>
+    <q-drawer v-if="isAuth" v-model="drawer" show-if-above bordered>
       <q-list>
         <q-item active clickable v-ripple>
           <q-item-section avatar>
@@ -67,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -76,6 +103,8 @@ const router = useRouter()
 const drawer = ref(null)
 const user = ref(null)
 const darkMode = ref(false)
+
+const isAuth = computed(() => auth.isAuthenticated)
 
 function toggleDrawer() {
   drawer.value = !drawer.value
@@ -99,6 +128,7 @@ onMounted(async () => {
   const savedTheme = localStorage.getItem('dark-mode')
   if (savedTheme !== null) {
     Dark.set(savedTheme === 'true')
+    darkMode.value = savedTheme === 'true'
   }
   // Auth user check
   const user = auth.getUser
