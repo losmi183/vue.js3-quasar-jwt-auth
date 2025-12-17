@@ -8,7 +8,7 @@ import { useAuthStore } from 'src/stores/auth'
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
-const api = axios.create({ baseURL: 'http://nighthub.test/api' })
+const api = axios.create({ baseURL: 'http://crypt-talk.test/api' })
 const PUBLIC_ROUTES = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot-password']
 
 function isPublicRoute(url) {

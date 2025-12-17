@@ -1,8 +1,8 @@
 {
-  "name": "nighthub",
+  "name": "crypt-talk",
   "version": "0.0.1",
   "description": "Nightclub and party marketplace",
-  "productName": "Nighthub",
+  "productName": "Crypt talk",
   "author": "milos.glogovac <milos.glogovac@gmail.com>",
   "type": "module",
   "private": true,

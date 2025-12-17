@@ -66,6 +66,26 @@ export const useAuthStore = defineStore('auth', () => {
     const res = await api.get('/auth/whoami')
 
     user.value = res.data
+    user.value.avatarPath = null
+    if (user.value.avatar) {
+      user.value.avatarPath = import.meta.env.VITE_AVATAR_ULR + user.value.avatar
+    }
+  }
+
+  // Profile
+  async function profileUpdate(name, about, avatar) {
+    const formData = new FormData()
+    formData.append('name', name)
+    formData.append('about', about)
+    if (avatar instanceof File) {
+      formData.append('avatar', avatar)
+    }
+
+    return api.post('profile-update', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
   }
 
   return {
@@ -81,5 +101,6 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     forgotPassword,
     resetPassword,
+    profileUpdate,
   }
 })

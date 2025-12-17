@@ -1,4 +1,4 @@
-# Nighthub (nighthub)
+# Crypt-talk (crypt-talk)
 
 Nightclub and party marketplace
 

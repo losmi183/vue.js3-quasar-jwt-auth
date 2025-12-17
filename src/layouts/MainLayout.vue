@@ -8,9 +8,9 @@
 
         <q-btn flat round dense class="q-ml-md" @click="menu = !menu">
           <q-avatar size="32px" class="q-mr-sm">
-            <img src="https://i.pravatar.cc/150?img=3" alt="Avatar" />
+            <img :src="user?.avatarPath" />
           </q-avatar>
-          <span>John Doe</span>
+          <span>{{ user?.name }}</span>
           <q-icon name="arrow_drop_down" class="q-ml-xs" />
         </q-btn>
 
@@ -18,7 +18,7 @@
           <q-list padding>
             <!-- Profile -->
             <q-item clickable v-ripple>
-              <q-item-section>Settings</q-item-section>
+              <q-item-section @click="router.push('/profile')">Profile</q-item-section>
             </q-item>
 
             <q-separator></q-separator>
@@ -131,12 +131,13 @@ onMounted(async () => {
     darkMode.value = savedTheme === 'true'
   }
   // Auth user check
-  const user = auth.getUser
+
   if (!auth.getUser()) {
     if (await auth.refresh()) {
       await auth.whoami()
     }
   }
+  user.value = auth.getUser()
 })
 
 watch(
