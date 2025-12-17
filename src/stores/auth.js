@@ -81,7 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
       formData.append('avatar', avatar)
     }
 
-    return api.post('profile-update', formData, {
+    return api.post('/auth/profile-update', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

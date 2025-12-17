@@ -8,7 +8,12 @@
 
         <q-btn flat round dense class="q-ml-md" @click="menu = !menu">
           <q-avatar size="32px" class="q-mr-sm">
-            <img :src="user?.avatarPath" />
+            <template v-if="getAvatarOrInitials(user).type === 'image'">
+              <img :src="getAvatarOrInitials(user).value" />
+            </template>
+            <template v-else>
+              <span>{{ getAvatarOrInitials(user).value }}</span>
+            </template>
           </q-avatar>
           <span>{{ user?.name }}</span>
           <q-icon name="arrow_drop_down" class="q-ml-xs" />
@@ -101,10 +106,10 @@ import { useRouter } from 'vue-router'
 const auth = useAuthStore()
 const router = useRouter()
 const drawer = ref(null)
-const user = ref(null)
 const darkMode = ref(false)
 
 const isAuth = computed(() => auth.isAuthenticated)
+const user = computed(() => auth.getUser())
 
 function toggleDrawer() {
   drawer.value = !drawer.value
@@ -117,6 +122,18 @@ function toggleDark(val) {
 function logout() {
   auth.logout()
   router.push('/')
+}
+
+function getAvatarOrInitials(user) {
+  if (user?.avatarPath) return { type: 'image', value: user.avatarPath }
+  return { type: 'initials', value: getInitials(user?.name) }
+}
+
+function getInitials(name) {
+  if (!name) return 'U' // fallback inicijal
+  const parts = name.trim().split(' ')
+  if (parts.length === 1) return parts[0][0].toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
 // --- DARK MODE ---
@@ -137,7 +154,6 @@ onMounted(async () => {
       await auth.whoami()
     }
   }
-  user.value = auth.getUser()
 })
 
 watch(

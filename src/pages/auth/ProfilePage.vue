@@ -3,28 +3,29 @@
     <q-form @submit.prevent="submitProfileUpdate" class="column q-gutter-md">
       <div class="text-h5 text-center text-primary q-mb-sm">Profile</div>
       <!-- <div>USER: {{ user }}</div> -->
-      <q-input disable filled v-model="user.email" label="Email" type="text" class="full-width" />
+      <q-input disable filled v-model="email" label="Email" type="text" class="full-width" />
       <q-input
         filled
-        v-model="user.name"
+        v-model="name"
         label="Name"
         type="text"
         :rules="[nameRule]"
         class="full-width"
       />
-      <q-input filled v-model="user.about" label="About" type="text" class="full-width" />
-      <q-input
-        filled
-        label="Avatar"
-        type="file"
-        accept="image/*"
-        @update:model-value="onAvatarChange"
-        class="full-width"
-      />
-      <div v-if="user.avatarPreview" class="flex flex-center q-mt-sm">
-        <q-avatar size="96px">
-          <img :src="user.avatarPreview" alt="" />
-        </q-avatar>
+      <q-input filled v-model="about" label="About" type="text" class="full-width" />
+
+      <div class="q-field q-field--filled full-width q-mb-md">
+        <label class="q-field__label" :class="$q.dark.isActive ? 'text-white' : 'text-grey-8'"
+          >Avatar</label
+        >
+        <input
+          filled
+          label="Avatar"
+          type="file"
+          accept="image/*"
+          @change="onFileChange"
+          class="full-width"
+        />
       </div>
 
       <q-btn label="UPDATE PROFILE" type="submit" color="primary" class="full-width q-py-sm" />
@@ -33,58 +34,53 @@
 </template>
 
 <script setup>
-import { reactive, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useAuthStore } from 'stores/auth'
-import { Notify } from 'quasar'
+// import { Notify } from 'quasar'
+import { MyNotify } from 'src/components/MyNotify'
 
 const auth = useAuthStore()
-const user = reactive({
-  email: '',
-  name: '',
-  about: '',
-  avatar: null,
-  avatarPreview: null,
-})
+
+const email = ref(null)
+const name = ref(null)
+const about = ref(null)
+const avatar = ref(null)
 
 const nameRule = (val) => {
   return val?.trim().length >= 2 || 'Name must have at least 2 characters'
 }
 
-onMounted(async () => {
-  const authUser = auth.getUser()
+watch(
+  () => auth.user,
+  (authUser) => {
+    if (!authUser) return
 
-  user.email = authUser?.email || ''
-  user.name = authUser?.name || ''
-  user.about = authUser?.about || ''
-  user.avatar = authUser?.avatar || ''
-  user.avatarPreview = authUser?.avatar || ''
-})
+    email.value = authUser?.email || ''
+    name.value = authUser?.name || ''
+    about.value = authUser?.about || ''
+  },
+  { immediate: true },
+)
 
-function onAvatarChange(file) {
-  if (!file) return
+function onFileChange(event) {
+  const files = event.target.files
 
-  user.value.avatar = file
-
-  // cleanup prethodnog preview-a
-  if (user.value.avatarPreview?.startsWith('blob:')) {
-    URL.revokeObjectURL(user.value.avatarPreview)
+  if (!files || !files.length) {
+    avatar.value = null
+    return
   }
 
-  user.value.avatarPreview = URL.createObjectURL(file)
+  avatar.value = files[0]
 }
 
 async function submitProfileUpdate() {
   try {
-    await auth.profileUpdate(user.value.name, user.value.about, user.value.avatar)
+    const res = await auth.profileUpdate(name.value, about.value, avatar.value)
+    MyNotify.success(res.data.message)
   } catch (err) {
-    console.error('Login error:', err)
+    console.error('Profile update error:', err)
     const message = err.response?.data?.message || 'Login failed'
-    Notify.create({
-      type: 'negative', // 'positive', 'warning', 'info'
-      message: message,
-      position: 'top-right',
-      timeout: 3000,
-    })
+    MyNotify.error(err)
   }
 }
 </script>

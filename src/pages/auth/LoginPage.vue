@@ -58,7 +58,8 @@ import { api } from 'boot/axios'
 import { useAuthStore } from 'stores/auth'
 import { useRouter } from 'vue-router'
 import { useRoute } from 'vue-router'
-import { Notify } from 'quasar'
+// import { Notify } from 'quasar'
+import { MyNotify } from 'src/components/MyNotify'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -79,10 +80,7 @@ const errorMessage = ref(null)
 onMounted(() => {
   console.log(route.query.status)
   if (route.query?.status === 'email_verified') {
-    Notify.create({
-      type: 'positive',
-      message: 'Email verified success. You can login',
-    })
+    MyNotify.success('Email verified success. You can login')
   }
 })
 
@@ -95,12 +93,7 @@ async function submitLogin() {
     console.error('Login error:', err)
     const message = err.response?.data?.message || 'Login failed'
     errorMessage.value = message
-    Notify.create({
-      type: 'negative', // 'positive', 'warning', 'info'
-      message: message,
-      position: 'top-right',
-      timeout: 3000,
-    })
+    MyNotify.error(err)
   }
 }
 function goToRegister() {

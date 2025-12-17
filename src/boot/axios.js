@@ -34,8 +34,9 @@ export default defineBoot(({ app }) => {
     (response) => response,
     async (error) => {
       const authStore = useAuthStore()
+      const status = error.response?.status
 
-      if (error.response?.status === 403) {
+      if (status === 403) {
         const originalRequest = error.config
 
         if (originalRequest._retry) {
@@ -44,7 +45,6 @@ export default defineBoot(({ app }) => {
         }
 
         originalRequest._retry = true
-
         try {
           await authStore.refresh()
           return api(originalRequest)
@@ -54,7 +54,6 @@ export default defineBoot(({ app }) => {
         }
       }
 
-      authStore.logout()
       return Promise.reject(error)
     },
   )
