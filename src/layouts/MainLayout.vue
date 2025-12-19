@@ -6,7 +6,7 @@
 
         <q-toolbar-title>Crypt Talk</q-toolbar-title>
 
-        <q-btn flat round dense class="q-ml-md" @click="menu = !menu">
+        <q-btn flat round dense class="q-ml-md">
           <q-avatar size="32px" class="q-mr-sm">
             <template v-if="getAvatarOrInitials(user).type === 'image'">
               <img :src="getAvatarOrInitials(user).value" />
@@ -101,15 +101,20 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
+import { useConversationStore } from 'src/stores/conversation'
 import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
+const conversationStore = useConversationStore()
 const router = useRouter()
 const drawer = ref(null)
 const darkMode = ref(false)
+const menu = ref(false)
 
 const isAuth = computed(() => auth.isAuthenticated)
 const user = computed(() => auth.getUser())
+
+// const conversations = ref(null)
 
 function toggleDrawer() {
   drawer.value = !drawer.value
@@ -148,12 +153,13 @@ onMounted(async () => {
     darkMode.value = savedTheme === 'true'
   }
   // Auth user check
-
   if (!auth.getUser()) {
     if (await auth.refresh()) {
       await auth.whoami()
     }
   }
+  // conversations load
+  // conversations.value = conversationStore.fetchConversations()
 })
 
 watch(

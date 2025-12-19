@@ -45,6 +45,7 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('refreshToken')
     token.value = null
     refreshToken.value = null
+    user.value = null
   }
 
   function register(name, email, password) {
@@ -88,6 +89,10 @@ export const useAuthStore = defineStore('auth', () => {
     })
   }
 
+  async function passwordUpdate(password) {
+    return api.post('/auth/password-update', { password })
+  }
+
   return {
     token,
     refreshToken,
@@ -102,5 +107,6 @@ export const useAuthStore = defineStore('auth', () => {
     forgotPassword,
     resetPassword,
     profileUpdate,
+    passwordUpdate,
   }
 })
