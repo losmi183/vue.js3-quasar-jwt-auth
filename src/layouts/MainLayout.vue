@@ -79,19 +79,40 @@
 
     <q-drawer v-if="isAuth" v-model="drawer" show-if-above bordered>
       <q-list>
-        <q-item active clickable v-ripple>
-          <q-item-section avatar>
-            <q-icon name="star"></q-icon>
+        <q-item
+          v-for="id in conversations.ids"
+          :key="id"
+          clickable
+          v-ripple
+          @click="openConversation(id)"
+        >
+          <!-- Avatar -->
+          <q-item-section v-if="conversations.entities[id].type === 'private'" avatar>
+            <q-avatar size="40px">
+              <img :src="conversations.entities[id].participants[0].avatar_url" alt="" />
+            </q-avatar>
           </q-item-section>
-          <q-item-section>star</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple>
-          <q-item-section avatar>
-            <q-icon name="send"></q-icon>
+
+          <!-- Naziv konverzacije -->
+          <q-item-section>
+            {{ conversations.entities[id].participantsNames.display }}
+          </q-item-section>
+
+          <!-- UNREAD BADGE -->
+          <q-item-section side>
+            <q-badge
+              v-if="conversations.entities[id].unreadCount > 0"
+              color="green"
+              rounded
+              align="middle"
+            >
+              {{ conversations.entities[id].unreadCount }}
+            </q-badge>
           </q-item-section>
         </q-item>
       </q-list>
     </q-drawer>
+
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -101,10 +122,12 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
+import { usePusherStore } from 'src/stores/pusher'
 import { useConversationStore } from 'src/stores/conversation'
 import { useRouter } from 'vue-router'
 
 const auth = useAuthStore()
+const pusherStore = usePusherStore()
 const conversationStore = useConversationStore()
 const router = useRouter()
 const drawer = ref(null)
@@ -114,7 +137,7 @@ const menu = ref(false)
 const isAuth = computed(() => auth.isAuthenticated)
 const user = computed(() => auth.getUser())
 
-// const conversations = ref(null)
+const conversations = conversationStore.conversations
 
 function toggleDrawer() {
   drawer.value = !drawer.value
@@ -158,8 +181,6 @@ onMounted(async () => {
       await auth.whoami()
     }
   }
-  // conversations load
-  // conversations.value = conversationStore.fetchConversations()
 })
 
 watch(
@@ -168,4 +189,29 @@ watch(
     localStorage.setItem('dark-mode', val)
   },
 )
+watch(
+  () => auth.token,
+  (val) => {
+    if (val) {
+      conversationStore.fetchConversations()
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  () => auth.getUser(),
+  (user) => {
+    if (user) {
+      pusherStore.init()
+    } else {
+      pusherStore.disconnect()
+    }
+  },
+  { immediate: true },
+)
+
+function openConversation(conversationId) {
+  router.push('/conversation/' + conversationId)
+}
 </script>

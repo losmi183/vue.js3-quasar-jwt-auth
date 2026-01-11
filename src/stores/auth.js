@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from 'src/boot/axios'
+import { useConversationStore } from './conversation'
 
 export const useAuthStore = defineStore('auth', () => {
   // state
   const token = ref(null)
   const refreshToken = ref(null)
   const user = ref(null)
+  const conversationStore = useConversationStore()
 
   // getters
   const isAuthenticated = computed(() => !!token.value)
@@ -46,6 +48,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     refreshToken.value = null
     user.value = null
+    conversationStore.reset()
   }
 
   function register(name, email, password) {

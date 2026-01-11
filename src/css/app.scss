@@ -3,3 +3,21 @@
   width: 100%;
   max-width: 380px; // idealan desktop/mobile kompromis
 } // app global css in SCSS form
+
+/* Global layout fix for Quasar - ensures q-page uses layout height and body doesn't scroll */
+html,
+body,
+#q-app,
+.q-layout,
+.q-page-container,
+.q-page {
+  height: 100%;
+  margin: 0;
+}
+
+/* Sprečavamo globalni vertikalni scroll (samo unutrašnji scroll u message kontejneru) */
+html,
+body,
+#q-app {
+  overflow: hidden;
+}
