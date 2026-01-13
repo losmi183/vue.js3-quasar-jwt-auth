@@ -33,11 +33,13 @@
 
           <div v-if="message.type == 'message'">{{ message.text }}</div>
           <div v-else-if="message.type == 'attachment'">
+            <!-- <div>{{ message.thumbnail }}?token={{ auth.token }}</div> -->
             <img
-              :src="message.attachmentPath"
-              style="max-width: 200px; border-radius: 8px"
+              :src="`${message.thumbnail}?conversationId=${conversationId}&token=${auth.token}`"
+              style="max-width: 200px; border-radius: 8px; cursor: pointer"
               @load="scrollToBottom"
               alt="attachment"
+              @click="openImage(attachments.indexOf(message.attachmentPath))"
             />
           </div>
 
@@ -119,6 +121,11 @@
         </div>
       </div>
     </div>
+    <AttachmentImageDialog
+      v-model="imageDialog"
+      :attachmentIndex="attachmentIndex"
+      :attachments="attachments"
+    ></AttachmentImageDialog>
   </q-page>
 </template>
 
@@ -130,6 +137,7 @@ import { useRoute } from 'vue-router'
 import format from 'src/utils/format'
 import { emojiCategories } from 'src/data/emojiCategories'
 import { api } from 'src/boot/axios'
+import AttachmentImageDialog from 'src/components/AttachmentImageDialog.vue'
 
 const messagesContainer = ref(null)
 
@@ -156,6 +164,20 @@ const fileInput = ref(null)
 const cameraInput = ref(null)
 const showEmojiPicker = ref(false)
 const activeCategory = ref(0)
+
+const imageDialog = ref(false)
+
+const attachments = computed(() => {
+  return messages.value
+    .filter((m) => m.type === 'attachment' && m.attachmentPath)
+    .map((m) => m.attachmentPath)
+})
+const attachmentIndex = ref(0)
+
+function openImage(index) {
+  attachmentIndex.value = index
+  imageDialog.value = true
+}
 
 // samo najčešći / popularni emoji
 const emojis = ['😂', '❤️', '👍', '🔥', '😍', '😭', '😎', '💪', '😉', '🎉']
