@@ -19,11 +19,28 @@
         @click="prev"
       />
 
-      <img
-        v-if="attachments[index]"
-        :src="attachments[index]"
-        style="max-width: 100%; max-height: 100%; object-fit: contain"
-      />
+      <!-- MEDIA DISPLAY -->
+      <div v-if="media && media[index]" class="media-display">
+        <!-- IMAGE -->
+        <img
+          v-if="media[index].type === 'image'"
+          :src="media[index].url"
+          style="max-width: 100%; max-height: 100%; object-fit: contain"
+        />
+
+        <!-- VIDEO -->
+        <video
+          v-else-if="media[index].type === 'video'"
+          :src="media[index].url"
+          controls
+          style="max-width: 100%; max-height: 100%; object-fit: contain"
+          @click="handleVideoClick"
+          ref="videoPlayer"
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
+
       <!-- RIGHT ARROW -->
       <q-btn
         icon="chevron_right"
@@ -45,11 +62,11 @@ const props = defineProps({
     type: Boolean,
     required: true,
   },
-  attachmentIndex: {
+  mediaIndex: {
     type: Number,
     default: 0,
   },
-  attachments: {
+  media: {
     type: Array,
     default: null,
   },
@@ -62,21 +79,21 @@ const internalModel = computed({
   set: (val) => emit('update:modelValue', val),
 })
 
-const index = ref(props.attachmentIndex)
+const index = ref(props.mediaIndex)
 
 watch(
-  () => props.attachmentIndex,
+  () => props.mediaIndex,
   (val) => {
-    const x = props.attachmentIndex
+    const x = props.mediaIndex
     index.value = val
   },
 )
 
 function prev() {
-  index.value = (index.value - 1 + props.attachments.length) % props.attachments.length
+  index.value = (index.value - 1 + props.media.length) % props.media.length
 }
 function next() {
-  index.value = (index.value + 1) % props.attachments.length
+  index.value = (index.value + 1) % props.media.length
 }
 
 function close() {

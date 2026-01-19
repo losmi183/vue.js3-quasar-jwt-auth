@@ -33,14 +33,49 @@
 
           <div v-if="message.type == 'message'">{{ message.text }}</div>
           <div v-else-if="message.type == 'attachment'">
-            <!-- <div>{{ message.thumbnail }}?token={{ auth.token }}</div> -->
-            <img
-              :src="`${message.thumbnail}?conversationId=${conversationId}&token=${auth.token}`"
-              style="max-width: 200px; border-radius: 8px; cursor: pointer"
-              @load="scrollToBottom"
-              alt="attachment"
-              @click="openImage(attachments.indexOf(message.attachmentPath))"
-            />
+            <!-- AUDIO  -->
+            <div v-if="message.attachmentType == 'audio'">
+              <AudioPlayer
+                :audioUrl="`${message.attachmentPath}?conversationId=${conversationId}&token=${auth.token}`"
+                :isMe="true"
+                :messageId="message.id"
+                :duration="message.duration"
+              ></AudioPlayer>
+            </div>
+
+            <!-- VIDEO -->
+            <div v-else-if="message.attachmentType == 'video'" class="media-container">
+              <div class="video-thumbnail" @click="openMedia(message)">
+                <img
+                  :src="`${message.thumbnail}?conversationId=${conversationId}&token=${auth.token}`"
+                  alt="video"
+                  class="media-thumbnail"
+                />
+                <!-- Play button uvek vidljiv -->
+                <div class="play-button-overlay">
+                  <q-icon name="play_circle" size="48px" color="white" />
+                </div>
+                <!-- Trajanje u donjem desnom uglu -->
+                <div class="video-duration" v-if="message.duration">
+                  {{ formatDuration(message.duration) }}
+                </div>
+              </div>
+            </div>
+
+            <!-- IMAGE -->
+            <div v-else-if="message.attachmentType == 'image'" class="media-container">
+              <div class="image-thumbnail" @click="openMedia(message)">
+                <img
+                  :src="`${message.thumbnail}?conversationId=${conversationId}&token=${auth.token}`"
+                  alt="image"
+                  class="media-thumbnail"
+                />
+                <!-- Ikona u gornjem desnom uglu -->
+                <div class="image-corner-icon">
+                  <q-icon name="photo" size="16px" color="white" />
+                </div>
+              </div>
+            </div>
           </div>
 
           <span class="time">{{ format.time(message.createdAt) }}</span>
@@ -80,7 +115,7 @@
         <input
           ref="fileInput"
           type="file"
-          accept="image/*,video/*"
+          accept="image/*,video/*, audio/*"
           style="display: none"
           @change="sendAttachment"
         />
@@ -121,11 +156,7 @@
         </div>
       </div>
     </div>
-    <AttachmentImageDialog
-      v-model="imageDialog"
-      :attachmentIndex="attachmentIndex"
-      :attachments="attachments"
-    ></AttachmentImageDialog>
+    <MediaGallery v-model="mediaGalleryOpen" :mediaIndex="mediaIndex" :media="media"></MediaGallery>
   </q-page>
 </template>
 
@@ -137,7 +168,8 @@ import { useRoute } from 'vue-router'
 import format from 'src/utils/format'
 import { emojiCategories } from 'src/data/emojiCategories'
 import { api } from 'src/boot/axios'
-import AttachmentImageDialog from 'src/components/AttachmentImageDialog.vue'
+import MediaGallery from 'src/components/MediaGallery.vue'
+import AudioPlayer from 'src/components/AudioPlayer.vue'
 
 const messagesContainer = ref(null)
 
@@ -165,22 +197,30 @@ const cameraInput = ref(null)
 const showEmojiPicker = ref(false)
 const activeCategory = ref(0)
 
-const imageDialog = ref(false)
+const mediaGalleryOpen = ref(false)
 
-const attachments = computed(() => {
+const media = computed(() => {
   return messages.value
-    .filter((m) => m.type === 'attachment' && m.attachmentPath)
-    .map((m) => m.attachmentPath)
+    .filter(
+      (m) =>
+        m.type === 'attachment' && (m.attachmentType === 'video' || m.attachmentType === 'image'),
+    )
+    .map((m) => ({
+      url: `${m.attachmentPath}?conversationId=${conversationId.value}&token=${auth.token}`,
+      type: m.attachmentType,
+      messageId: m.id,
+      thumbnail: m.thumbnail, // Ako treba
+    }))
 })
-const attachmentIndex = ref(0)
+const mediaIndex = ref(0)
 
-function openImage(index) {
-  attachmentIndex.value = index
-  imageDialog.value = true
+function openMedia(message) {
+  const index = media.value.findIndex((item) => item.messageId === message.id)
+  if (index !== -1) {
+    mediaIndex.value = index
+    mediaGalleryOpen.value = true
+  }
 }
-
-// samo najčešći / popularni emoji
-const emojis = ['😂', '❤️', '👍', '🔥', '😍', '😭', '😎', '💪', '😉', '🎉']
 
 function scrollToBottom() {
   nextTick(() => {
@@ -194,6 +234,13 @@ function scrollToBottom() {
 function selectEmoji(emoji) {
   newMessage.value += emoji
   showEmojiPicker.value = false // odmah zatvori picker
+}
+
+const formatDuration = (seconds) => {
+  if (!seconds || isNaN(seconds)) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
 }
 
 async function onScroll() {
@@ -394,5 +441,59 @@ watch(
 
 .emoji:hover {
   transform: scale(1.2);
+}
+
+// Media CSS
+.media-container {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.media-thumbnail {
+  max-width: 200px;
+  border-radius: 8px;
+  display: block;
+}
+
+/* VIDEO - Play button uvek vidljiv */
+.play-button-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  padding: 8px;
+}
+
+/* VIDEO - Trajanje u donjem desnom uglu */
+.video-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* IMAGE - Ikona u gornjem desnom uglu */
+.image-corner-icon {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px;
+  border-radius: 4px;
+}
+
+/* Optional: Hover efekti samo za desktop */
+@media (hover: hover) and (pointer: fine) {
+  .media-container:hover .media-thumbnail {
+    opacity: 0.9;
+  }
 }
 </style>

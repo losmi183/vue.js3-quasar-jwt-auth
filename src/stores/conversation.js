@@ -75,18 +75,7 @@ export const useConversationStore = defineStore('conversation', () => {
           messages.ids.unshift(m.id)
         }
 
-        messages.entities[m.id] = {
-          id: m.id,
-          conversationId: m.conversation_id,
-          text: m.message,
-          type: m.type,
-          attachmentPath: m.attachment_path,
-          thumbnail: m.thumbnail,
-          senderId: m.sender_id,
-          senderName: m.sender_name,
-          senderAvatar: m.avatar_url,
-          createdAt: m.created_at,
-        }
+        messages.entities[m.id] = mapMessage(m)
       })
 
       if (msgs.length > 0) {
@@ -109,16 +98,7 @@ export const useConversationStore = defineStore('conversation', () => {
       })
 
       const m = res.data.message
-      const msg = {
-        id: m.id,
-        conversationId: m.conversation_id,
-        text: m.message,
-        type: 'message',
-        senderId: m.sender_id,
-        senderName: m.sender_name,
-        senderAvatar: m.avatar_url,
-        createdAt: m.created_at,
-      }
+      const msg = mapMessage(m)
       messages.ids.push(msg.id)
       messages.entities[msg.id] = msg
     } catch (err) {
@@ -142,18 +122,7 @@ export const useConversationStore = defineStore('conversation', () => {
       })
 
       const m = response.data.attachment
-      const msg = {
-        id: m.id,
-        conversationId: m.conversation_id,
-        text: m.message,
-        type: m.type,
-        attachmentPath: m.attachment_path,
-        thumbnail: m.thumbnail,
-        senderId: m.sender_id,
-        senderName: m.sender_name,
-        senderAvatar: m.avatar_url,
-        createdAt: m.created_at,
-      }
+      const msg = mapMessage(m)
       messages.ids.push(msg.id)
       messages.entities[msg.id] = msg
     } catch (err) {
@@ -165,20 +134,7 @@ export const useConversationStore = defineStore('conversation', () => {
 
   function receiveMessage(m) {
     if (messages.entities[m.id]) return
-
-    const msg = {
-      id: m.id,
-      conversationId: m.conversation_id,
-      text: m.message,
-      type: m.type,
-      attachmentPath: m.attachment_path,
-      thumbnail: m.thumbnail,
-      senderId: m.sender_id,
-      senderName: m.sender_name,
-      senderAvatar: m.avatar_url,
-      createdAt: m.created_at,
-    }
-
+    const msg = mapMessage(m)
     messages.ids.push(msg.id)
     messages.entities[msg.id] = msg
 
@@ -212,6 +168,23 @@ export const useConversationStore = defineStore('conversation', () => {
     messages.pagination.loading = false
 
     conversationsLoaded.value = false
+  }
+
+  function mapMessage(m) {
+    return {
+      id: m.id,
+      conversationId: m.conversation_id,
+      text: m.message,
+      type: m.type,
+      attachmentPath: m.attachment_path,
+      attachmentType: m.attachment_type,
+      duration: m.duration,
+      thumbnail: m.thumbnail,
+      senderId: m.sender_id,
+      senderName: m.sender_name,
+      senderAvatar: m.avatar_url,
+      createdAt: m.created_at,
+    }
   }
 
   return {
