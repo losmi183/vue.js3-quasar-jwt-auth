@@ -77,16 +77,80 @@
               </div>
             </div>
           </div>
+
           <span class="time">{{ format.time(message.createdAt) }}</span>
         </div>
       </div>
 
       <div id="conversation-input" style="position: relative" class="row items-center q-gutter-sm">
-        <!-- Kamera dugme (izvan inputa - levo) -->
-        <q-btn flat round icon="camera_alt" @click="$refs.cameraInput.click()" />
+        <!-- Mobile glasovna poruka -->
+        <q-btn
+          v-if="$q.screen.lt.md"
+          round
+          dense
+          flat
+          :icon="isRecording ? 'stop' : 'mic'"
+          :color="isRecording ? 'negative' : 'primary'"
+          @mousedown="startVoiceRecording"
+          @touchstart="startVoiceRecording"
+          @mouseup="stopVoiceRecording"
+          @touchend="stopVoiceRecording"
+          class="voice-btn"
+          :class="{ 'recording-active': isRecording }"
+        />
 
-        <!-- Attach dugme (izvan inputa - levo) -->
-        <q-btn flat round icon="attach_file" @click="$refs.fileInput.click()" />
+        <!-- Attachment menu -->
+        <q-btn flat round icon="attach_file" @click="toggleAttachmentMenu">
+          <q-menu v-model="attachmentMenuOpen" anchor="top left" self="top right">
+            <q-list style="min-width: 200px">
+              <!-- Photo & Video Library -->
+              <q-item clickable v-close-popup @click="openFilePicker">
+                <q-item-section avatar>
+                  <q-icon name="photo_library" />
+                </q-item-section>
+                <q-item-section>Photo & Video</q-item-section>
+              </q-item>
+
+              <!-- Document -->
+              <q-item clickable v-close-popup @click="openDocumentPicker">
+                <q-item-section avatar>
+                  <q-icon name="description" />
+                </q-item-section>
+                <q-item-section>Document</q-item-section>
+              </q-item>
+
+              <!-- Snimi foto -->
+              <q-item clickable v-close-popup @click="openCameraForPhoto">
+                <q-item-section avatar>
+                  <q-icon name="photo_camera" />
+                </q-item-section>
+                <q-item-section>Take Photo</q-item-section>
+              </q-item>
+
+              <!-- Snimi video -->
+              <q-item clickable v-close-popup @click="openCameraForVideo">
+                <q-item-section avatar>
+                  <q-icon name="videocam" />
+                </q-item-section>
+                <q-item-section>Record Video</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+
+        <!-- Kamera dugme -->
+        <q-btn flat round icon="camera_alt" @click="openCameraQuick">
+          <q-menu v-if="$q.screen.gt.xs" anchor="top left" self="top right">
+            <q-list style="min-width: 150px">
+              <q-item clickable v-close-popup @click="openCameraForPhoto">
+                <q-item-section>Take Photo</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="openCameraForVideo">
+                <q-item-section>Record Video</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
 
         <!-- Tekstualna poruka -->
         <q-input
@@ -98,43 +162,67 @@
           rounded
           class="col"
         >
-          <template v-slot:prepend>
-            <!-- Emoji dugme (unutar inputa - levo) -->
-            <q-btn
-              flat
-              round
-              dense
-              icon="sentiment_satisfied"
-              @click="showEmojiPicker = !showEmojiPicker"
-            />
-          </template>
-
           <template v-slot:append>
-            <!-- VOICE MSG (unutar inputa - desno) -->
-            <VoiceMessage :conversationId="conversationId"></VoiceMessage>
+            <!-- Emoji dugme -->
+            <q-btn flat round icon="sentiment_satisfied" @click="toggleEmojiPicker" />
           </template>
         </q-input>
 
-        <!-- Pošalji dugme -->
-        <q-btn label="Pošalji" color="primary" @click="sendMessage" />
+        <!-- Desktop glasovna poruka -->
+        <q-btn
+          v-if="$q.screen.gt.sm"
+          round
+          dense
+          flat
+          :icon="isRecording ? 'stop' : 'mic'"
+          :color="isRecording ? 'negative' : 'primary'"
+          @click="toggleVoiceRecording"
+          class="voice-btn-desktop"
+          :class="{ 'recording-active': isRecording }"
+        />
 
-        <!-- File input (skriven) -->
+        <!-- Pošalji dugme -->
+        <q-btn
+          label="Pošalji"
+          color="primary"
+          @click="sendMessage"
+          :disabled="!newMessage.trim() && !isRecording"
+        />
+
+        <!-- Hidden inputs -->
         <input
           ref="fileInput"
           type="file"
-          accept="image/*,video/*, audio/*"
+          accept="image/*,video/*"
+          multiple
           style="display: none"
-          @change="sendAttachment"
+          @change="handleFileUpload"
         />
 
-        <!-- Kamera input (skriven) -->
         <input
-          ref="cameraInput"
+          ref="documentInput"
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.xls,.xlsx"
+          style="display: none"
+          @change="handleDocumentUpload"
+        />
+
+        <input
+          ref="photoCameraInput"
           type="file"
           accept="image/*"
           capture="environment"
           style="display: none"
-          @change="sendAttachment"
+          @change="handleCameraPhoto"
+        />
+
+        <input
+          ref="videoCameraInput"
+          type="file"
+          accept="video/*"
+          capture="environment"
+          style="display: none"
+          @change="handleCameraVideo"
         />
 
         <!-- Mini Emoji Picker -->
@@ -161,6 +249,11 @@
             </span>
           </div>
         </div>
+
+        <!-- Recording timer -->
+        <div v-if="isRecording" class="recording-timer">
+          {{ formatRecordingTime(recordingTimer) }}
+        </div>
       </div>
     </div>
     <MediaGallery v-model="mediaGalleryOpen" :mediaIndex="mediaIndex" :media="media"></MediaGallery>
@@ -172,13 +265,14 @@ import { ref, onMounted, watch, computed, nextTick } from 'vue'
 import { useAuthStore } from 'stores/auth'
 import { useConversationStore } from 'src/stores/conversation'
 import { useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 import format from 'src/utils/format'
 import { emojiCategories } from 'src/data/emojiCategories'
 import { api } from 'src/boot/axios'
 import MediaGallery from 'src/components/MediaGallery.vue'
 import AudioPlayer from 'src/components/AudioPlayer.vue'
-import VoiceMessage from 'src/components/VoiceMessage.vue'
 
+const $q = useQuasar()
 const messagesContainer = ref(null)
 
 const route = useRoute()
@@ -194,18 +288,28 @@ const messages = computed(() => {
   return conversationStore.messages.ids
     .map((id) => conversationStore.messages.entities[id])
     .filter((msg) => msg.conversationId == conversationId.value)
-  // .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
 })
 
-// console.log(messages.value)
-
+// Refs
 const newMessage = ref('')
 const fileInput = ref(null)
-const cameraInput = ref(null)
+const documentInput = ref(null)
+const photoCameraInput = ref(null)
+const videoCameraInput = ref(null)
 const showEmojiPicker = ref(false)
 const activeCategory = ref(0)
+const attachmentMenuOpen = ref(false)
 
+// Voice recording state
+const isRecording = ref(false)
+const recordingTimer = ref(0)
+const recordingInterval = ref(null)
+const mediaRecorder = ref(null)
+const audioChunks = ref([])
+
+// Media gallery
 const mediaGalleryOpen = ref(false)
+const mediaIndex = ref(0)
 
 const media = computed(() => {
   return messages.value
@@ -217,11 +321,11 @@ const media = computed(() => {
       url: `${m.attachmentPath}?conversationId=${conversationId.value}&token=${auth.token}`,
       type: m.attachmentType,
       messageId: m.id,
-      thumbnail: m.thumbnail, // Ako treba
+      thumbnail: m.thumbnail,
     }))
 })
-const mediaIndex = ref(0)
 
+// Functions
 function openMedia(message) {
   const index = media.value.findIndex((item) => item.messageId === message.id)
   if (index !== -1) {
@@ -241,13 +345,19 @@ function scrollToBottom() {
 
 function selectEmoji(emoji) {
   newMessage.value += emoji
-  showEmojiPicker.value = false // odmah zatvori picker
+  showEmojiPicker.value = false
 }
 
 const formatDuration = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs < 10 ? '0' : ''}${secs}`
+}
+
+function formatRecordingTime(seconds) {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`
 }
 
@@ -266,7 +376,6 @@ function sendMessage() {
   if (!newMessage.value.trim()) return
 
   conversationStore.sendMessage(conversationId.value, newMessage.value)
-
   newMessage.value = ''
 }
 
@@ -274,6 +383,166 @@ function sendAttachment(event) {
   conversationStore.handleFileUpload(conversationId.value, event)
 }
 
+// Attachment menu functions
+function toggleAttachmentMenu() {
+  attachmentMenuOpen.value = !attachmentMenuOpen.value
+}
+
+function toggleEmojiPicker() {
+  showEmojiPicker.value = !showEmojiPicker.value
+}
+
+// File pickers
+function openFilePicker() {
+  fileInput.value?.click()
+}
+
+function openDocumentPicker() {
+  documentInput.value?.click()
+}
+
+// Camera functions
+function openCameraQuick() {
+  if ($q.screen.xs) {
+    photoCameraInput.value?.click()
+  }
+}
+
+function openCameraForPhoto() {
+  photoCameraInput.value?.click()
+}
+
+function openCameraForVideo() {
+  videoCameraInput.value?.click()
+}
+
+// File handlers
+function handleFileUpload(event) {
+  conversationStore.handleFileUpload(conversationId.value, event)
+}
+
+async function handleDocumentUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('conversation_id', conversationId.value)
+
+  try {
+    await api.post('/conversation/send-attachment', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  } catch (err) {
+    console.error('Document upload error:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Greška pri slanju dokumenta',
+    })
+  } finally {
+    event.target.value = null
+  }
+}
+
+function handleCameraPhoto(event) {
+  conversationStore.handleFileUpload(conversationId.value, event)
+}
+
+function handleCameraVideo(event) {
+  conversationStore.handleFileUpload(conversationId.value, event)
+}
+
+// Voice recording functions
+async function startVoiceRecording() {
+  if (isRecording.value) return
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    mediaRecorder.value = new MediaRecorder(stream)
+    audioChunks.value = []
+
+    mediaRecorder.value.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.value.push(event.data)
+      }
+    }
+
+    mediaRecorder.value.onstop = async () => {
+      const audioBlob = new Blob(audioChunks.value, { type: 'audio/webm' })
+      await sendVoiceMessage(audioBlob)
+
+      // Zaustavi stream
+      stream.getTracks().forEach((track) => track.stop())
+    }
+
+    mediaRecorder.value.start()
+    isRecording.value = true
+    recordingTimer.value = 0
+
+    // Start timer
+    recordingInterval.value = setInterval(() => {
+      recordingTimer.value++
+
+      // Auto-stop nakon 2 minuta
+      if (recordingTimer.value >= 120) {
+        stopVoiceRecording()
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('Recording error:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Greška pri pristupu mikrofonu',
+    })
+  }
+}
+
+function stopVoiceRecording() {
+  if (isRecording.value && mediaRecorder.value) {
+    mediaRecorder.value.stop()
+    isRecording.value = false
+    clearInterval(recordingInterval.value)
+  }
+}
+
+function toggleVoiceRecording() {
+  if (isRecording.value) {
+    stopVoiceRecording()
+  } else {
+    startVoiceRecording()
+  }
+}
+
+async function sendVoiceMessage(audioBlob) {
+  try {
+    const formData = new FormData()
+    formData.append('audio', audioBlob, `voice_${Date.now()}.webm`)
+    formData.append('conversation_id', conversationId.value)
+    formData.append('duration', recordingTimer.value)
+
+    await api.post('/conversation/send-voice', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: 'Glasovna poruka poslata',
+      timeout: 2000,
+    })
+  } catch (error) {
+    console.error('Voice message send error:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Greška pri slanju glasovne poruke',
+    })
+  }
+}
+
+// Lifecycle
 onMounted(() => {
   scrollToBottom()
 })
@@ -284,14 +553,13 @@ watch(
     scrollToBottom()
   },
 )
-// CHANGE CONVERSATION
+
 watch(
   [() => conversationId.value, () => conversationStore.conversationsLoaded],
   ([id, loaded]) => {
     if (!id || !loaded) return
     conversationStore.activeConversationId = conversationId.value
     conversationStore.openConversation(id)
-
     conversationStore.markAsRead(conversationId.value)
   },
   { immediate: true },
@@ -322,6 +590,7 @@ watch(
   flex-shrink: 0;
   padding: 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
 }
 
 /** MESSAGES */
@@ -496,6 +765,39 @@ watch(
   background: rgba(0, 0, 0, 0.7);
   padding: 4px;
   border-radius: 4px;
+}
+
+/* Voice recording */
+.recording-active {
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 10px rgba(244, 67, 54, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(244, 67, 54, 0);
+  }
+}
+
+.recording-timer {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* Optional: Hover efekti samo za desktop */

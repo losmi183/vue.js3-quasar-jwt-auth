@@ -132,6 +132,39 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
+  async function sendVoiceMessage(conversationId, audioBlob) {
+    try {
+      // Kreiraj audio fajl od blob-a
+      const audioFile = new File([audioBlob], `voice_message_${Date.now()}.webm`, {
+        type: audioBlob.type || 'audio/webm',
+        lastModified: Date.now(),
+      })
+
+      // Kreiraj FormData kao za regularan fajl
+      const formData = new FormData()
+      formData.append('file', audioFile)
+      formData.append('conversation_id', conversationId)
+
+      // Pozovi postojeći API
+      const response = await api.post('/conversation/send-attachment', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+
+      // Obradi odgovor
+      const m = response.data.attachment
+      const msg = mapMessage(m)
+      messages.ids.push(msg.id)
+      messages.entities[msg.id] = msg
+
+      return { success: true, message: msg }
+    } catch (error) {
+      console.error('Voice message upload error:', error)
+      throw error
+    }
+  }
+
   function receiveMessage(m) {
     if (messages.entities[m.id]) return
     const msg = mapMessage(m)
@@ -198,6 +231,7 @@ export const useConversationStore = defineStore('conversation', () => {
     openConversation,
     sendMessage,
     handleFileUpload,
+    sendVoiceMessage,
     receiveMessage,
     markAsRead,
   }

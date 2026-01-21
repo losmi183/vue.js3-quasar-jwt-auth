@@ -7,7 +7,7 @@
         dense
         flat
         :icon="isCurrentlyPlaying ? 'pause' : 'play_arrow'"
-        :color="isMe ? 'white' : 'primary'"
+        :color="isMe ? 'black' : 'primary'"
         size="sm"
         @click="togglePlayback"
         class="audio-play-btn"
@@ -43,8 +43,8 @@ const props = defineProps({
     default: false,
   },
   messageId: {
-    type: String,
-    default: '',
+    type: Number,
+    default: 0,
   },
   duration: {
     type: Number,
