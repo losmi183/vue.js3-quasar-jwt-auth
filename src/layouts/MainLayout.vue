@@ -1,115 +1,144 @@
 <template>
-  <q-layout>
+  <q-layout view="lHh Lpr lFf" v-if="auth.initialized">
     <q-header elevated>
       <q-toolbar v-if="isAuth">
-        <q-btn flat dense round icon="menu" @click="toggleDrawer"></q-btn>
-
+        <q-btn flat dense round icon="menu" @click="toggleDrawer" />
         <q-toolbar-title>Crypt Talk</q-toolbar-title>
-
         <q-btn flat round dense class="q-ml-md">
           <q-avatar size="32px" class="q-mr-sm">
-            <template v-if="getAvatarOrInitials(user).type === 'image'">
-              <img :src="getAvatarOrInitials(user).value" />
-            </template>
-            <template v-else>
-              <span>{{ getAvatarOrInitials(user).value }}</span>
-            </template>
+            <img
+              v-if="getAvatarOrInitials(user).type === 'image'"
+              :src="getAvatarOrInitials(user).value"
+            />
+            <span v-else>{{ getAvatarOrInitials(user).value }}</span>
           </q-avatar>
           <span>{{ user?.name }}</span>
           <q-icon name="arrow_drop_down" class="q-ml-xs" />
         </q-btn>
-
         <q-menu v-model="menu" anchor="bottom right" self="top right">
           <q-list padding>
-            <!-- Profile -->
-            <q-item clickable v-ripple>
-              <q-item-section @click="router.push('/profile')">Profile</q-item-section>
+            <q-item clickable v-ripple @click="router.push('/profile')">
+              <q-item-section>Profile</q-item-section>
             </q-item>
-
-            <q-separator></q-separator>
-
-            <!-- Theme Switch -->
+            <q-separator />
             <q-item clickable v-ripple>
               <q-item-section>
                 <div class="row items-center justify-between">
                   <span>Theme</span>
                   <q-toggle v-model="darkMode" @update:model-value="toggleDark" label="Dark Mode" />
-                  <!-- <q-btn round flat icon="brightness_6" @click="$q.dark.toggle()"></q-btn> -->
                 </div>
               </q-item-section>
             </q-item>
-
             <q-separator />
-
-            <!-- Logout -->
-            <q-item clickable v-ripple>
-              <q-item-section @click="logout" class="text-negative">Logout</q-item-section>
+            <q-item clickable v-ripple @click="logout">
+              <q-item-section class="text-negative">Logout</q-item-section>
             </q-item>
           </q-list>
         </q-menu>
       </q-toolbar>
-      <q-toolbar v-else>
-        <!-- sve guramo desno -->
-        <q-space />
-
-        <!-- Theme toggle -->
-        <div class="row items-center q-mr-md">
-          <span class="q-mr-sm">Theme</span>
-          <q-toggle
-            v-model="darkMode"
-            @update:model-value="toggleDark"
-            dense
-            :color="darkMode ? 'blue-5' : 'blue-5'"
-            track-color="grey-3"
-            thumb-color="white"
-          />
-        </div>
-
-        <!-- Login -->
-        <q-btn round flat dense icon="login" color="grey-3" to="/login">
-          <q-tooltip>Login</q-tooltip>
-        </q-btn>
-
-        <!-- Register -->
-        <q-btn round flat dense icon="person_add" color="grey-3" to="/register">
-          <q-tooltip>Register</q-tooltip>
-        </q-btn>
-      </q-toolbar>
     </q-header>
 
     <q-drawer v-if="isAuth" v-model="drawer" show-if-above bordered>
-      <q-list>
-        <q-item
-          v-for="id in conversations.ids"
-          :key="id"
-          clickable
-          v-ripple
-          @click="openConversation(id)"
+      <div class="q-pa-md">
+        <q-input
+          v-model="searchQuery"
+          placeholder="Pretraži..."
+          outlined
+          dense
+          clearable
+          @update:model-value="onSearchInput"
         >
-          <!-- Avatar -->
-          <q-item-section v-if="conversations.entities[id].type === 'private'" avatar>
-            <q-avatar size="40px">
-              <img :src="conversations.entities[id].participants[0].avatar_url" alt="" />
-            </q-avatar>
-          </q-item-section>
+          <template v-slot:prepend><q-icon name="search" /></template>
+        </q-input>
+      </div>
 
-          <!-- Naziv konverzacije -->
-          <q-item-section>
-            {{ conversations.entities[id].participantsNames.display }}
-          </q-item-section>
+      <q-separator />
 
-          <!-- UNREAD BADGE -->
-          <q-item-section side>
-            <q-badge
-              v-if="conversations.entities[id].unreadCount > 0"
-              color="green"
-              rounded
-              align="middle"
+      <div v-if="isSearching" class="q-pa-md text-center">
+        <q-spinner color="primary" size="30px" />
+      </div>
+
+      <q-list v-else>
+        <template v-if="!searchQuery">
+          <q-item
+            v-for="id in conversations.ids"
+            :key="id"
+            clickable
+            v-ripple
+            @click="openConversation(id)"
+          >
+            <q-item-section avatar>
+              <q-avatar size="40px">
+                <img
+                  :src="
+                    conversations.entities[id].participants[0]?.avatar_url ||
+                    'images/avatar/default.png'
+                  "
+                />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>{{
+              conversations.entities[id].participantsNames.display
+            }}</q-item-section>
+            <q-item-section side v-if="conversations.entities[id].unreadCount > 0">
+              <q-badge color="green" rounded>{{ conversations.entities[id].unreadCount }}</q-badge>
+            </q-item-section>
+          </q-item>
+        </template>
+
+        <template v-else>
+          <template v-if="searchConversations.length > 0">
+            <q-item-label header class="text-weight-bold">Active Conversations</q-item-label>
+            <q-item
+              v-for="conv in searchConversations"
+              :key="'conv-' + conv.id"
+              clickable
+              v-ripple
+              @click="openConversation(conv.id)"
             >
-              {{ conversations.entities[id].unreadCount }}
-            </q-badge>
-          </q-item-section>
-        </q-item>
+              <q-item-section avatar>
+                <q-avatar size="40px">
+                  <img :src="conv.users[0]?.avatar_url" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ conv.title || conv.users[0]?.name }}</q-item-label>
+                <q-item-label caption v-if="conv.type === 'group'">Group Chat</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-separator class="q-my-sm" />
+          </template>
+
+          <template v-if="searchResults.length > 0">
+            <q-item-label header class="text-weight-bold">Other Users</q-item-label>
+            <q-item
+              v-for="user in searchResults"
+              :key="'user-' + user.id"
+              clickable
+              v-ripple
+              @click="startConversation(user.id)"
+            >
+              <q-item-section avatar>
+                <q-avatar size="40px">
+                  <img :src="user.avatar_url" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ user.name }}</q-item-label>
+                <q-item-label caption>{{ user.email }}</q-item-label>
+              </q-item-section>
+              <q-item-section side><q-icon name="person_add" color="primary" /></q-item-section>
+            </q-item>
+          </template>
+
+          <div
+            v-if="searchConversations.length === 0 && searchResults.length === 0"
+            class="q-pa-xl text-center text-grey"
+          >
+            <q-icon name="sentiment_dissatisfied" size="48px" />
+            <div class="q-mt-md">No results found for "{{ searchQuery }}"</div>
+          </div>
+        </template>
       </q-list>
     </q-drawer>
 
@@ -125,20 +154,74 @@ import { useAuthStore } from 'src/stores/auth'
 import { usePusherStore } from 'src/stores/pusher'
 import { useConversationStore } from 'src/stores/conversation'
 import { useRouter } from 'vue-router'
+import { api } from 'src/boot/axios'
+import { Dark } from 'quasar'
 
 const auth = useAuthStore()
 const pusherStore = usePusherStore()
 const conversationStore = useConversationStore()
 const router = useRouter()
+
 const drawer = ref(null)
 const darkMode = ref(false)
 const menu = ref(false)
-
 const isAuth = computed(() => auth.isAuthenticated)
 const user = computed(() => auth.getUser())
-
 const conversations = conversationStore.conversations
 
+// SEARCH STATE
+const searchQuery = ref('')
+const searchResults = ref([]) // Ljudi bez konekcije
+const searchConversations = ref([]) // Postojeći chatovi
+const isSearching = ref(false)
+let searchTimeout = null
+
+function onSearchInput(value) {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  if (!value || value.trim() === '') {
+    searchResults.value = []
+    searchConversations.value = []
+    isSearching.value = false
+    return
+  }
+  isSearching.value = true
+  searchTimeout = setTimeout(() => performSearch(value.trim()), 300)
+}
+
+async function performSearch(query) {
+  try {
+    const response = await api.post('/user/search', { search: query })
+    // Ovde hvatamo tvoj novi stdClass { users, conversations }
+    searchResults.value = response.data.users || []
+    searchConversations.value = response.data.conversations || []
+  } catch (error) {
+    console.error('❌ Search error:', error)
+  } finally {
+    isSearching.value = false
+  }
+}
+
+async function startConversation(friendId) {
+  try {
+    const response = await api.post('/conversation/start-conversation', {
+      friend_id: friendId,
+    })
+    const conversationId = response.data.conversation_id
+    conversationStore.conversationsLoaded = false
+    await conversationStore.fetchConversations()
+
+    searchQuery.value = ''
+    router.push(`/conversation/${conversationId}`)
+  } catch (error) {
+    console.error('❌ Error starting conversation:', error)
+  }
+}
+
+function openConversation(id) {
+  router.push('/conversation/' + id)
+}
+
+// ... (Ostale funkcije toggleDrawer, logout, getInitials ostaju iste) ...
 function toggleDrawer() {
   drawer.value = !drawer.value
 }
@@ -146,61 +229,40 @@ function toggleDark(val) {
   Dark.set(val)
   localStorage.setItem('dark-mode', val)
 }
-
 function logout() {
   auth.logout()
   router.push('/')
 }
-
-function getAvatarOrInitials(user) {
-  if (user?.avatarPath) return { type: 'image', value: user.avatarPath }
-  return { type: 'initials', value: getInitials(user?.name) }
+function getAvatarOrInitials(u) {
+  if (u?.avatarPath) return { type: 'image', value: u.avatarPath }
+  return { type: 'initials', value: getInitials(u?.name) }
 }
-
 function getInitials(name) {
-  if (!name) return 'U' // fallback inicijal
+  if (!name) return 'U'
   const parts = name.trim().split(' ')
   if (parts.length === 1) return parts[0][0].toUpperCase()
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
-// --- DARK MODE ---
-import { Dark } from 'quasar'
-
-// 1️⃣ Proveri localStorage prilikom mount-a
-onMounted(async () => {
-  // Dark theme
+onMounted(() => {
   const savedTheme = localStorage.getItem('dark-mode')
   if (savedTheme !== null) {
     Dark.set(savedTheme === 'true')
     darkMode.value = savedTheme === 'true'
   }
-  // Auth user check
-  if (!auth.getUser()) {
-    if (await auth.refresh()) {
-      await auth.whoami()
-    }
-  }
+  auth.initAuth()
 })
 
 watch(
-  () => Dark.isActive,
-  (val) => {
-    localStorage.setItem('dark-mode', val)
-  },
-)
-watch(
   () => auth.token,
   (val) => {
-    if (val) {
-      conversationStore.fetchConversations()
-    }
+    if (val) conversationStore.fetchConversations()
   },
   { immediate: true },
 )
 
 watch(
-  () => auth.getUser(),
+  () => auth.user,
   (user) => {
     if (user) {
       pusherStore.init()
@@ -210,8 +272,4 @@ watch(
   },
   { immediate: true },
 )
-
-function openConversation(conversationId) {
-  router.push('/conversation/' + conversationId)
-}
 </script>

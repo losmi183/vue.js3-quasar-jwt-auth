@@ -9,11 +9,35 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref(null)
   const user = ref(null)
   const conversationStore = useConversationStore()
+  const initialized = ref(false)
 
   // getters
   const isAuthenticated = computed(() => !!token.value)
   function getUser() {
     return user.value
+  }
+
+  async function initAuth() {
+    if (initialized.value) return
+
+    const savedToken = localStorage.getItem('token')
+    const savedRefresh = localStorage.getItem('refreshToken')
+
+    if (!savedToken || !savedRefresh) {
+      initialized.value = true
+      return
+    }
+
+    token.value = savedToken
+    refreshToken.value = savedRefresh
+
+    try {
+      await whoami()
+    } catch (error) {
+      logout()
+    } finally {
+      initialized.value = true
+    }
   }
 
   // actions
@@ -101,6 +125,8 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     user,
     isAuthenticated,
+    initialized,
+    initAuth,
     getUser,
     login,
     whoami,

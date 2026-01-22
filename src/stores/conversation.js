@@ -90,6 +90,26 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
+  // U stores/conversation.js
+  // function addOrUpdateConversation(conversation) {
+  //   const exists = this.conversations.ids.includes(conversation.id)
+
+  //   if (!exists) {
+  //     // Dodaj novu konverzaciju
+  //     this.conversations.ids.unshift(conversation.id) // Na početak liste
+  //     this.conversations.entities[conversation.id] = {
+  //       ...conversation,
+  //       unreadCount: 0,
+  //     }
+  //   } else {
+  //     // Update postojeću
+  //     this.conversations.entities[conversation.id] = {
+  //       ...this.conversations.entities[conversation.id],
+  //       ...conversation,
+  //     }
+  //   }
+  // }
+
   async function sendMessage(conversationId, content) {
     try {
       const res = await api.post('/conversation/send-message', {
@@ -182,7 +202,7 @@ export const useConversationStore = defineStore('conversation', () => {
       conversationId: convId,
       messageId: msgId,
     })
-    conversations.entities[convId].unreadCount = 0
+    if (conversations.entities[convId] != undefined) conversations.entities[convId].unreadCount = 0
   }
 
   function reset() {
@@ -196,9 +216,11 @@ export const useConversationStore = defineStore('conversation', () => {
       delete messages.entities[key]
     })
 
-    messages.pagination.lastMessageId = null
-    messages.pagination.hasMore = true
-    messages.pagination.loading = false
+    if (messages.pagination !== undefined) {
+      messages.pagination.lastMessageId = null
+      messages.pagination.hasMore = true
+      messages.pagination.loading = false
+    }
 
     conversationsLoaded.value = false
   }
@@ -226,6 +248,7 @@ export const useConversationStore = defineStore('conversation', () => {
     messages,
     conversationsLoaded,
     fetchConversations,
+    // addOrUpdateConversation,
     reset,
     getConversationById,
     openConversation,
