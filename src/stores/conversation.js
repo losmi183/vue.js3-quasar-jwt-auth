@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, reactive, computed } from 'vue'
 import { api } from 'src/boot/axios'
 import format from 'src/utils/format'
+import { encryptMessage } from 'src/crypto/aesGcm'
+import { decryptMessage } from 'src/crypto/aesGcm'
 
 export const useConversationStore = defineStore('conversation', () => {
   // state
@@ -28,7 +30,6 @@ export const useConversationStore = defineStore('conversation', () => {
 
     try {
       const res = await api.get('/conversation/index')
-
       res.data.forEach((c) => {
         if (!conversations.entities[c.id]) {
           conversations.ids.push(c.id)
@@ -37,7 +38,11 @@ export const useConversationStore = defineStore('conversation', () => {
         conversations.entities[c.id] = {
           id: c.id,
           title: c.title,
+          encrypted: c.encrypted,
           type: c.type,
+          salt: c.salt,
+          iterations: c.iterations,
+          cryptPassword: 'Secret123#',
           participants: c.users,
           participantsNames: format.calculateParticipant(c.users),
           unreadCount: c.unread_count,
@@ -67,7 +72,6 @@ export const useConversationStore = defineStore('conversation', () => {
         conversationId,
         lastMessageId: conversation.pagination.lastMessageId,
       })
-
       const msgs = res.data.messages
 
       msgs.forEach((m) => {
@@ -83,6 +87,7 @@ export const useConversationStore = defineStore('conversation', () => {
       }
 
       conversation.pagination.hasMore = msgs.length === 20
+      decryptExistingMessages()
     } catch (error) {
       console.log(error)
     } finally {
@@ -90,40 +95,68 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
-  // U stores/conversation.js
-  // function addOrUpdateConversation(conversation) {
-  //   const exists = this.conversations.ids.includes(conversation.id)
-
-  //   if (!exists) {
-  //     // Dodaj novu konverzaciju
-  //     this.conversations.ids.unshift(conversation.id) // Na početak liste
-  //     this.conversations.entities[conversation.id] = {
-  //       ...conversation,
-  //       unreadCount: 0,
-  //     }
-  //   } else {
-  //     // Update postojeću
-  //     this.conversations.entities[conversation.id] = {
-  //       ...this.conversations.entities[conversation.id],
-  //       ...conversation,
-  //     }
-  //   }
-  // }
-
-  async function sendMessage(conversationId, content) {
+  async function changeEncrypted(conversationId, encrypted) {
     try {
-      const res = await api.post('/conversation/send-message', {
-        conversationId,
-        content,
+      const res = await api.post('/conversation/change-encrypted', {
+        conversationId: conversationId,
+        encrypted: encrypted,
       })
-
-      const m = res.data.message
-      const msg = mapMessage(m)
-      messages.ids.push(msg.id)
-      messages.entities[msg.id] = msg
-    } catch (err) {
-      console.log(err)
+      conversations.entities[conversationId].encrypted = encrypted
+    } catch (error) {
+      console.log(error)
     }
+  }
+
+  async function setConversationPassword(conversationId, password) {
+    const conv = conversations.entities[conversationId]
+    if (conv) {
+      conv.cryptPassword = password
+
+      // Dekriptuj sve postojeće enkriptovane poruke
+      if (password && password.length > 0) {
+        await decryptExistingMessages()
+      }
+    }
+  }
+
+  function clearConversationPassword(conversationId) {
+    const conv = this.conversations.entities[conversationId]
+    if (conv && conv.password) {
+      delete conv.password
+    }
+  }
+
+  async function sendMessage(conversationId, text, isEncrypted, password) {
+    let encryptedData = null
+    let iv = null
+    let messageText = text
+
+    if (isEncrypted) {
+      const conversation = conversations.entities[conversationId]
+      const encryptedResult = await encryptMessage(
+        text,
+        password,
+        conversation.salt,
+        conversation.salt.iterations,
+      )
+      encryptedData = encryptedResult.data
+      iv = encryptedResult.iv
+      messageText = null // Za kriptovane poruke šaljemo null
+    }
+
+    const res = await api.post('/conversation/send-message', {
+      conversationId: conversationId,
+      isEncrypted: isEncrypted,
+      text: messageText,
+      encryptedData: encryptedData,
+      iv: iv,
+    })
+
+    const m = res.data.message
+    m.message = text
+    const msg = mapMessage(m)
+    messages.ids.push(msg.id)
+    messages.entities[msg.id] = msg
   }
 
   async function handleFileUpload(conversationId, event) {
@@ -185,8 +218,51 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
-  function receiveMessage(m) {
+  async function receiveMessage(m) {
     if (messages.entities[m.id]) return
+
+    let messageToProcess = m
+
+    // 1. Ako je enkriptovana, dekriptuj pre mapiranja
+    if (m.is_encrypted) {
+      try {
+        const conversationId = m.conversation_id
+        const conversation = conversations.entities[conversationId]
+
+        if (!conversation) {
+          console.error('Konverzacija nije pronađena:', conversationId)
+          return
+        }
+
+        // PROVERI - da li je ovo `password` ili `cryptPassword`?
+        const conversationPassword = conversation.cryptPassword || conversation.password
+
+        if (!conversationPassword) {
+          console.error('Password nije pronađen za konverzaciju:', conversationId)
+          // Možda prikaži nešto kao "Unesi password da vidiš poruku"
+          return
+        }
+
+        // Dekriptuj
+        const decryptedText = await decryptMessage(
+          m.message_encrypted, // ciphertext
+          m.iv,
+          conversationPassword,
+          conversation.salt,
+          conversation.iterations,
+        )
+
+        // Kreiraj novi objekat sa dekriptovanim tekstom
+        m.message = decryptedText
+        m.status = 'success'
+      } catch (error) {
+        console.error('Decrypt error:', error)
+        // Prikaži nešto kao "Nije moguće dekriptovati"
+        m.message = 'Encryption failed! Wrong password'
+        m.status = 'failed'
+      }
+    }
+
     const msg = mapMessage(m)
     messages.ids.push(msg.id)
     messages.entities[msg.id] = msg
@@ -230,7 +306,11 @@ export const useConversationStore = defineStore('conversation', () => {
       id: m.id,
       conversationId: m.conversation_id,
       text: m.message,
+      textEncrypted: m.message_encrypted,
+      isEncrypted: m.is_encrypted || false,
       type: m.type,
+      iv: m.iv,
+      status: m.status || null,
       attachmentPath: m.attachment_path,
       attachmentType: m.attachment_type,
       duration: m.duration,
@@ -240,6 +320,36 @@ export const useConversationStore = defineStore('conversation', () => {
       senderAvatar: m.avatar_url,
       createdAt: m.created_at,
     }
+
+    // u conversation.js store-u dodajemo ovu funkciju:
+  }
+
+  async function decryptExistingMessages() {
+    const conversation = conversations.entities[activeConversationId.value]
+    if (!conversation) return
+    const messageIds = messages.ids
+
+    for (const messageId of messageIds) {
+      const msg = messages.entities[messageId]
+
+      if (msg.conversationId == activeConversationId.value && msg.isEncrypted) {
+        try {
+          const decryptedText = await decryptMessage(
+            msg.textEncrypted,
+            msg.iv,
+            conversation.cryptPassword,
+            conversation.salt,
+            conversation.iterations,
+          )
+          msg.text = decryptedText
+          msg.status = 'success'
+        } catch (error) {
+          console.error('Error decrypting existing messages:', error)
+          msg.text = 'Encryption failed! Wrong password'
+          msg.status = 'failed'
+        }
+      }
+    }
   }
 
   return {
@@ -248,7 +358,8 @@ export const useConversationStore = defineStore('conversation', () => {
     messages,
     conversationsLoaded,
     fetchConversations,
-    // addOrUpdateConversation,
+    changeEncrypted,
+    setConversationPassword,
     reset,
     getConversationById,
     openConversation,

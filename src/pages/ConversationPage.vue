@@ -2,16 +2,36 @@
   <q-page class="column" :class="$q.dark.isActive ? 'bg-dark text-white' : 'bg-grey-2 text-dark'">
     <div id="conversation-container">
       <!-- Header -->
-      <div id="conversation-header">
-        <span v-if="conversation?.type == 'private'">
-          <!-- <q-avatar size="40px">
-            <img :src="conversation?.senderAvatar" alt="" />
-          </q-avatar> -->
-        </span>
-        <span class="message-sender">
-          {{ conversation?.participantsNames.display }}
-        </span>
+      <div id="conversation-header" class="row items-center">
+        <div class="col-9 row items-center">
+          <span v-if="conversation?.type == 'private'"> </span>
+          <span class="message-sender q-ml-sm ellipsis" style="font-size: 24px">
+            {{ conversation?.participantsNames.display }}
+          </span>
+        </div>
+
+        <!-- Desna strana - toggle (3/12 = 25%) -->
+        <div class="col-3 text-right">
+          <div>Kriptovanje : {{ cryptConversation }} | PASS: {{ cryptPassword }}</div>
+          <q-toggle
+            size="xl"
+            v-model="cryptConversation"
+            color="red"
+            val="xl"
+            label="Crypt conversation"
+            dense
+            @update:model-value="handlecryptConversation"
+          />
+        </div>
       </div>
+
+      <!-- Dialog -->
+      <CryptMessageDialog
+        v-model="cryptDialog"
+        :cryptPassword="cryptPassword"
+        @cancel="cryptDialog = false"
+        @password-set="handlePasswordSet"
+      />
 
       <!-- Messages  -->
       <div id="conversation-messages" ref="messagesContainer" @scroll="onScroll">
@@ -19,7 +39,11 @@
           v-for="message in messages"
           :key="message.id"
           class="message"
-          :class="message.senderId == user?.id ? 'me' : 'other'"
+          :class="[
+            message.senderId == user?.id ? 'me' : 'other',
+            message?.status == 'success' ? 'success-encrypt' : '',
+            message?.status == 'failed' ? 'failed-encrypt' : '',
+          ]"
         >
           <!-- <div>Sender ID: {{ message.senderId }} a user id {{ user?.id }}</div> -->
           <div v-if="conversation?.type == 'group' && message.senderId != user?.id">
@@ -31,7 +55,10 @@
             </span>
           </div>
 
-          <div v-if="message.type == 'message'">{{ message.text }}</div>
+          <div v-if="message.type == 'message'">
+            {{ message.text }}
+          </div>
+
           <div v-else-if="message.type == 'attachment'">
             <!-- AUDIO  -->
             <div v-if="message.attachmentType == 'audio'">
@@ -178,6 +205,7 @@ import { api } from 'src/boot/axios'
 import MediaGallery from 'src/components/MediaGallery.vue'
 import AudioPlayer from 'src/components/AudioPlayer.vue'
 import VoiceMessage from 'src/components/VoiceMessage.vue'
+import CryptMessageDialog from 'src/components/CryptMessageDialog.vue'
 
 const messagesContainer = ref(null)
 
@@ -200,12 +228,36 @@ const messages = computed(() => {
 // console.log(messages.value)
 
 const newMessage = ref('')
-const fileInput = ref(null)
-const cameraInput = ref(null)
 const showEmojiPicker = ref(false)
 const activeCategory = ref(0)
 
 const mediaGalleryOpen = ref(false)
+
+const cryptConversation = computed(() => {
+  const conv = conversationStore.conversations.entities[conversationId.value]
+  return conv?.encrypted ? true : false
+})
+const cryptDialog = ref(false)
+const cryptPassword = computed(() => {
+  const conv = conversationStore.conversations.entities[conversationId.value]
+  return conv?.cryptPassword || '' // PRAZAN string ako nema password-a
+})
+
+async function handlecryptConversation(value) {
+  if (value) {
+    // Kada se UKLJUČI - otvori dialog
+    cryptDialog.value = true
+  }
+  try {
+    await conversationStore.changeEncrypted(conversationId.value, value)
+  } catch (error) {
+    console.error('Failed to disable encryption:', error)
+  }
+}
+
+function handlePasswordSet(newPassword) {
+  conversationStore.setConversationPassword(conversationId.value, newPassword)
+}
 
 const media = computed(() => {
   return messages.value
@@ -265,7 +317,12 @@ async function onScroll() {
 function sendMessage() {
   if (!newMessage.value.trim()) return
 
-  conversationStore.sendMessage(conversationId.value, newMessage.value)
+  conversationStore.sendMessage(
+    conversationId.value,
+    newMessage.value,
+    cryptConversation.value,
+    cryptPassword.value,
+  )
 
   newMessage.value = ''
 }
@@ -496,6 +553,39 @@ watch(
   background: rgba(0, 0, 0, 0.7);
   padding: 4px;
   border-radius: 4px;
+}
+
+.success-encrypt {
+  background-color: green !important;
+  color: white;
+  position: relative;
+  padding-right: 30px !important;
+
+  &::after {
+    content: '✓'; // Checkmark - uspešno pročitano
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    font-weight: bold;
+  }
+}
+
+.failed-encrypt {
+  background-color: red !important;
+  color: white;
+  position: relative;
+  padding-right: 30px !important;
+
+  &::after {
+    content: '🔐'; // Zaključan sa ključem - nemaš pristup
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+  }
 }
 
 /* Optional: Hover efekti samo za desktop */
