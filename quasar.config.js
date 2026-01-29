@@ -38,15 +38,22 @@ export default defineConfig((/* ctx */) => {
       },
 
       vueRouterMode: 'history', // available values: 'hash', 'history'
+
+      // ========== DODAJ OVO ==========
+      publicPath: '/',
+
+      env: {
+        API_URL: process.env.VITE_API_URL || 'http://localhost:8000/api',
+      },
+      // ===============================
+
       // vueRouterBase,
       // vueDevtools,
       // vueOptionsAPI: false,
 
       // rebuildCache: true, // rebuilds Vite/linter/etc cache on startup
 
-      // publicPath: '/',
       // analyze: true,
-      // env: {},
       // rawDefine: {}
       // ignorePublicFolder: true,
       // minify: false,
