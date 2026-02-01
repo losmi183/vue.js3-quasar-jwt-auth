@@ -3,7 +3,9 @@ import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
 import { useAuthStore } from 'src/stores/auth'
 
-const api = axios.create({ baseURL: 'http://crypt-talk.test/api' })
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL + '/api',
+})
 const PUBLIC_ROUTES = ['/auth/login', '/auth/register', '/auth/refresh', '/auth/forgot-password']
 
 function isPublicRoute(url) {
