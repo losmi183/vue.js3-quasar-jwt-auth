@@ -32,7 +32,7 @@ jobs:
         run: npm install
 
       - name: Build Quasar application
-        run: npm run build -- --mode production
+        run: npm run build
         env:
           NODE_ENV: production
           VITE_API_URL: https://crypt-talk.online/api
