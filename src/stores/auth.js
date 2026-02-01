@@ -96,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = res.data
     user.value.avatarPath = null
     if (user.value.avatar) {
-      user.value.avatarPath = import.meta.env.VITE_AVATAR_ULR + user.value.avatar
+      user.value.avatarPath = import.meta.env.VITE_AVATAR_URL + user.value.avatar
     }
   }
 
