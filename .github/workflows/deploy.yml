@@ -32,10 +32,11 @@ jobs:
         run: npm install
 
       - name: Build Quasar application
-        run: npm run build
+        run: npm run build -- --mode production
         env:
           NODE_ENV: production
           VITE_API_URL: https://crypt-talk.online/api
+          VITE_AVATAR_URL: https://crypt-talk.online/images/avatar/
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
