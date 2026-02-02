@@ -19,6 +19,20 @@ export const useConversationStore = defineStore('conversation', () => {
   })
   const conversationsLoaded = ref(false)
 
+  const activeConversations = computed(() => conversations.ids.length) // samo proveri
+  const totalUnreadCount = computed(() => {
+    let total = 0
+    conversations.ids.forEach((id) => {
+      const conv = conversations.entities[id]
+      if (conv && conv.unreadCount) {
+        total += Number(conv.unreadCount)
+      }
+    })
+    return total
+  })
+  const totalMessages = ref(0)
+  const encryptedMessages = ref(0)
+
   // getters
   function getConversationById(conversationId) {
     return conversations.entities[conversationId]
@@ -30,7 +44,7 @@ export const useConversationStore = defineStore('conversation', () => {
 
     try {
       const res = await api.get('/conversation/index')
-      res.data.forEach((c) => {
+      res.data.conversations.forEach((c) => {
         if (!conversations.entities[c.id]) {
           conversations.ids.push(c.id)
         }
@@ -52,6 +66,8 @@ export const useConversationStore = defineStore('conversation', () => {
             loading: false,
           },
         }
+        encryptedMessages.value = res.data.encryptedMessages
+        totalMessages.value = res.data.totalMessages
       })
       conversationsLoaded.value = true
     } catch (error) {
@@ -357,6 +373,10 @@ export const useConversationStore = defineStore('conversation', () => {
     conversations,
     messages,
     conversationsLoaded,
+    activeConversations,
+    totalUnreadCount,
+    totalMessages,
+    encryptedMessages,
     fetchConversations,
     changeEncrypted,
     setConversationPassword,
