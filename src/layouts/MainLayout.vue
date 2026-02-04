@@ -2,7 +2,7 @@
   <q-layout view="lHh Lpr lFf" v-if="auth.initialized">
     <q-header elevated>
       <q-toolbar v-if="isAuth">
-        <q-btn flat dense round icon="menu" @click="toggleDrawer" />
+        <q-btn flat dense round icon="menu" @click.stop="toggleDrawer" />
         <q-toolbar-title>Crypt Talk</q-toolbar-title>
         <q-btn flat round dense class="q-ml-md">
           <q-avatar size="32px" class="q-mr-sm">

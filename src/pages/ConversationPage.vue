@@ -3,7 +3,7 @@
     <div id="conversation-container">
       <!-- Header -->
       <div id="conversation-header" class="row items-center">
-        <div class="col-9 row items-center">
+        <div class="col-6 row items-center">
           <span v-if="conversation?.type == 'private'"> </span>
           <span class="message-sender q-ml-sm ellipsis" style="font-size: 24px">
             {{ conversation?.participantsNames.display }}
@@ -11,14 +11,14 @@
         </div>
 
         <!-- Desna strana - toggle (3/12 = 25%) -->
-        <div class="col-3 text-right">
-          <div>Kriptovanje : {{ cryptConversation }} | PASS: {{ cryptPassword }}</div>
+        <div class="col-6 text-right">
+          <!-- <div>Kriptovanje : {{ cryptConversation }} | PASS: {{ cryptPassword }}</div> -->
+          <span class="q-mr-md">ENCRYPTION</span>
           <q-toggle
-            size="xl"
+            size="l"
             v-model="cryptConversation"
             color="red"
-            val="xl"
-            label="Crypt conversation"
+            val="l"
             dense
             @update:model-value="handlecryptConversation"
           />
@@ -44,6 +44,8 @@
             message?.status == 'success' ? 'success-encrypt' : '',
             message?.status == 'failed' ? 'failed-encrypt' : '',
           ]"
+          @click="handleMessageClick(message)"
+          :style="message?.status == 'failed' ? 'cursor: pointer;' : ''"
         >
           <!-- <div>Sender ID: {{ message.senderId }} a user id {{ user?.id }}</div> -->
           <div v-if="conversation?.type == 'group' && message.senderId != user?.id">
@@ -143,7 +145,7 @@
         </q-input>
 
         <!-- Pošalji dugme -->
-        <q-btn label="Pošalji" color="primary" @click="sendMessage" />
+        <q-btn label="Pošalji" color="primary" @touchstart="sendMessage" @mousedown="sendMessage" />
 
         <!-- File input (skriven) -->
         <input
@@ -252,6 +254,12 @@ async function handlecryptConversation(value) {
     await conversationStore.changeEncrypted(conversationId.value, value)
   } catch (error) {
     console.error('Failed to disable encryption:', error)
+  }
+}
+
+function handleMessageClick(message) {
+  if (message?.status === 'failed') {
+    cryptDialog.value = true
   }
 }
 

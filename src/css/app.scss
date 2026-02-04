@@ -21,3 +21,17 @@ body,
 #q-app {
   overflow: hidden;
 }
+
+.q-layout .q-page-container#page-container {
+  padding: 8px !important;
+}
+
+.justified-text {
+  text-align: justify;
+  text-justify: inter-word;
+  line-height: 1.6;
+  text-align-last: left;
+}
+.text-align-center {
+  text-align: center;
+}

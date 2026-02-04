@@ -1,10 +1,12 @@
 <template>
   <q-page class="flex flex-center">
     <!-- Za neulogovane korisnike -->
-    <div v-if="!isAuth">
-      <div class="text-h4 text-primary q-mb-md">Crypted Talk Web Application</div>
+    <div v-if="!isAuth" class="home-container">
+      <div class="text-h3 text-primary q-mb-md text-align-center q-mb-xl" style="font-size: 47px">
+        CRYPT TALK
+      </div>
 
-      <div class="text-body1 q-mb-lg" style="max-width: 600px">
+      <div class="text-body1 q-mb-lg justified-text" style="max-width: 600px">
         Welcome to Crypted Talk — a secure communication platform where all messages are
         <b>encrypted directly in your browser</b> and can only be decrypted by the participants in
         the conversation. Even the system administrators cannot access or view your messages.
@@ -14,15 +16,26 @@
         <b>maximum privacy and security</b> for all users.
       </div>
 
-      <div>
-        <q-btn label="Login" color="primary" class="q-mx-sm" to="/login" />
-        <q-btn label="Register" color="secondary" class="q-mx-sm" to="/register" />
+      <div class="row justify-center q-gutter-md">
+        <q-btn
+          label="Login"
+          color="primary"
+          class="col-xs-12 col-sm-auto q-mx-xl"
+          :class="$q.screen.xs ? 'q-mb-md' : ''"
+          to="/login"
+        />
+        <q-btn
+          label="Register"
+          color="secondary"
+          class="col-xs-12 col-sm-auto q-mx-xl"
+          to="/register"
+        />
       </div>
     </div>
 
     <!-- Za ulogovane korisnike -->
-    <div v-else class="dashboard-container">
-      <div class="text-h4 text-primary q-mb-md">Welcome back, {{ auth.user.name }}! 👋</div>
+    <div v-else class="dashboard-container home-container">
+      <div class="text-h4 text-primary q-mb-md">Welcome back, {{ auth.user.name }}</div>
 
       <div class="text-body1 text-grey-7 q-mb-xl">Your secure communication hub</div>
 
@@ -97,3 +110,11 @@ const conversationStore = useConversationStore()
 
 const isAuth = computed(() => auth.isAuthenticated)
 </script>
+
+<style scoped>
+.home-container {
+  padding: 8px !important;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+</style>
