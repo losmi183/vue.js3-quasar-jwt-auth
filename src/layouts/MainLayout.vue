@@ -77,9 +77,9 @@
                 />
               </q-avatar>
             </q-item-section>
-            <q-item-section>{{
-              conversations.entities[id].participantsNames.display
-            }}</q-item-section>
+            <q-item-section
+              >{{ conversations.entities[id].participantsNames.display }}
+            </q-item-section>
             <q-item-section side v-if="conversations.entities[id].unreadCount > 0">
               <q-badge color="green" rounded>{{ conversations.entities[id].unreadCount }}</q-badge>
             </q-item-section>

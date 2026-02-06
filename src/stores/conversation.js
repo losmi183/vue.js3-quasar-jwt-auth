@@ -142,11 +142,16 @@ export const useConversationStore = defineStore('conversation', () => {
     }
   }
 
-  async function sendMessage(conversationId, text, isEncrypted, password) {
+  async function sendMessage(conversationId, text, isEncrypted, password, conversationType) {
+    // 1. starting setup
     let encryptedData = null
     let iv = null
     let messageText = text
-
+    let url = '/conversation/send-message'
+    if (conversationType == 'chatbot') {
+      url = '/conversation/send-message-ai'
+    }
+    // 2. encription
     if (isEncrypted) {
       const conversation = conversations.entities[conversationId]
       const encryptedResult = await encryptMessage(
@@ -159,20 +164,32 @@ export const useConversationStore = defineStore('conversation', () => {
       iv = encryptedResult.iv
       messageText = null // Za kriptovane poruke šaljemo null
     }
-
-    const res = await api.post('/conversation/send-message', {
+    // 3. post request
+    const res = await api.post(url, {
       conversationId: conversationId,
       isEncrypted: isEncrypted,
       text: messageText,
       encryptedData: encryptedData,
       iv: iv,
     })
-
-    const m = res.data.message
-    m.message = text
-    const msg = mapMessage(m)
-    messages.ids.push(msg.id)
-    messages.entities[msg.id] = msg
+    // 4. map message
+    const arrayMessages = res.data.message
+    // debugger
+    // arrayMessages.forEach((m) => {
+    //   if (m.is_encrypted) {
+    //     m.message = text
+    //   }
+    //   const msg = mapMessage(m)
+    //   messages.ids.push(msg.id)
+    //   messages.entities[msg.id] = msg
+    // })
+    for (const [i, m] of arrayMessages.entries()) {
+      if (i) await new Promise((r) => setTimeout(r, 500))
+      if (m.is_encrypted) m.message = text
+      const msg = mapMessage(m)
+      messages.ids.push(msg.id)
+      messages.entities[msg.id] = msg
+    }
   }
 
   async function handleFileUpload(conversationId, event) {

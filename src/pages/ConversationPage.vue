@@ -120,7 +120,7 @@
         <!-- Tekstualna poruka -->
         <q-input
           v-model="newMessage"
-          placeholder="Napiši poruku..."
+          placeholder="Write message..."
           @keyup.enter="sendMessage"
           dense
           outlined
@@ -145,7 +145,7 @@
         </q-input>
 
         <!-- Pošalji dugme -->
-        <q-btn label="Pošalji" color="primary" @touchstart="sendMessage" @mousedown="sendMessage" />
+        <q-btn label="Send" color="primary" @touchstart="sendMessage" @mousedown="sendMessage" />
 
         <!-- File input (skriven) -->
         <input
@@ -330,6 +330,7 @@ function sendMessage() {
     newMessage.value,
     cryptConversation.value,
     cryptPassword.value,
+    conversation.value.type,
   )
 
   newMessage.value = ''
