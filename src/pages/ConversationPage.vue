@@ -324,7 +324,6 @@ async function onScroll() {
 
 function sendMessage() {
   if (!newMessage.value.trim()) return
-
   conversationStore.sendMessage(
     conversationId.value,
     newMessage.value,

@@ -4,6 +4,7 @@ import { api } from 'src/boot/axios'
 import format from 'src/utils/format'
 import { encryptMessage } from 'src/crypto/aesGcm'
 import { decryptMessage } from 'src/crypto/aesGcm'
+import { nextTick } from 'vue'
 
 export const useConversationStore = defineStore('conversation', () => {
   // state
@@ -184,11 +185,27 @@ export const useConversationStore = defineStore('conversation', () => {
     //   messages.entities[msg.id] = msg
     // })
     for (const [i, m] of arrayMessages.entries()) {
-      if (i) await new Promise((r) => setTimeout(r, 500))
+      if (i) await new Promise((r) => setTimeout(r, 300))
       if (m.is_encrypted) m.message = text
       const msg = mapMessage(m)
       messages.ids.push(msg.id)
-      messages.entities[msg.id] = msg
+
+      // Ako je DRUGA poruka (index 1), prikaži je sa typewriter efektom
+      if (i === 1) {
+        // Prvo postavi praznu poruku
+        messages.entities[msg.id] = {
+          ...msg,
+          text: '', // Počni sa praznim tekstom
+        }
+
+        // Zatim animiraj tekst
+        await typeWriterEffect(msg.id, msg.text, messages.entities, 30) // 20 reči po sekundi
+      } else {
+        // Ostale poruke prikaži odmah
+        messages.entities[msg.id] = msg
+      }
+
+      // messages.entities[msg.id] = msg
     }
   }
 
@@ -383,6 +400,39 @@ export const useConversationStore = defineStore('conversation', () => {
         }
       }
     }
+  }
+
+  function typeWriterEffect(messageId, fullText, messagesEntities, wordsPerSecond = 30) {
+    return new Promise((resolve) => {
+      const words = fullText.split(' ')
+      const delay = 1000 / wordsPerSecond
+
+      let index = 0
+      const interval = setInterval(() => {
+        if (index < words.length) {
+          const currentText = words.slice(0, index + 1).join(' ')
+          messagesEntities[messageId] = {
+            ...messagesEntities[messageId],
+            text: currentText,
+          }
+
+          // Scroll samo na svakih 5 reči + na kraju
+          if (index % 5 === 0 || index === words.length - 1) {
+            nextTick(() => {
+              const container = document.getElementById('conversation-messages')
+              if (container) {
+                container.scrollTop = container.scrollHeight
+              }
+            })
+          }
+
+          index++
+        } else {
+          clearInterval(interval)
+          resolve()
+        }
+      }, delay)
+    })
   }
 
   return {
